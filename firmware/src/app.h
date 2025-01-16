@@ -58,6 +58,7 @@ SUBSTITUTE GOODS, TECHNOLOGY, SERVICES, OR ANY CLAIMS BY THIRD PARTIES
 #include <stdlib.h>
 #include "system_config.h"
 #include "system_definitions.h"
+#include "Mc32DriverAdc.h"
 
 // DOM-IGNORE-BEGIN
 #ifdef __cplusplus  // Provide C++ Compatibility
@@ -72,7 +73,9 @@ extern "C" {
 // Section: Type Definitions
 // *****************************************************************************
 // *****************************************************************************
-
+#define NBRLEDS 8
+#define TEMP_INIT 149    
+    
 // *****************************************************************************
 /* Application states
 
@@ -88,20 +91,14 @@ typedef enum
 {
 	/* Application's state machine's initial state. */
 	APP_STATE_INIT=0,
-    APP_STATE_WAIT,
+    APP_STATE_WAIT=1,
 	APP_STATE_SERVICE_TASKS,
 
 	/* TODO: Define states used by the application state machine. */
 
 } APP_STATES;
 
-#define NB_LEDS 8
-#define L1 1
-#define L2 2
-#define L3 3
-#define L4 4
-#define C1 1
-#define _3STIMER 150
+
 // *****************************************************************************
 /* Application Data
 
@@ -115,11 +112,13 @@ typedef enum
     Application strings and buffers are be defined outside this structure.
  */
 
+
 typedef struct
 {
     /* The application's current state */
     APP_STATES state;
-//    S_ADCResults AdcRes;
+    S_ADCResults AdcRes;
+
     /* TODO: Define any additional data used by the application. */
 
 } APP_DATA;
@@ -170,11 +169,27 @@ typedef struct
     This routine must be called from the SYS_Initialize function.
 */
 
+// Prototype de la fonction APP_Initialize
 void APP_Initialize ( void );
-void APP_TMR1_CallBack(void);
+// Prototype de la fonction APP_Timer1CallBack
+void APP_Timer1CallBack(void);
+// Prototype de la fonction APP_Timer2CallBack
+void APP_Timer2CallBack(void);
+// Prototype de la fonction APP_Timer3CallBack
+void APP_Timer3CallBack(void);
+// Prototype de la fonction APP_Timer4CallBack
+void APP_Timer4CallBack(void);
 
-void FullLedOn(void);           //allumage de toutes les leds
-void FullLedOff(void);         //extinction de toutes les leds
+
+void APP_UpdateState ( APP_STATES NewState);
+
+void initialisation(void);
+void LEDOff(void);  //prototype fonction LEDOff
+
+int miseAJourMoyenneSpeed(int nouvelleValeur);
+int convertPosNegSpeed(int adcValue);
+int absoluteSpeed(int valeurVitesseSignee);
+
 /*******************************************************************************
   Function:
     void APP_Tasks ( void )

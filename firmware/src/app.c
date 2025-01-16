@@ -1,4 +1,3 @@
-
 /*******************************************************************************
   MPLAB Harmony Application Source File
   
@@ -55,18 +54,16 @@ SUBSTITUTE GOODS, TECHNOLOGY, SERVICES, OR ANY CLAIMS BY THIRD PARTIES
 // *****************************************************************************
 
 #include "app.h"
-#include "bsp.h"
-#include "stdint.h"
-#include "gestPWM.h"
 #include "Mc32DriverLcd.h"
-#include "Mc32DriverAdc.h"
+#include "bsp.h"
+#include "gestPWM.h"
 
 // *****************************************************************************
 // *****************************************************************************
 // Section: Global Data Definitions
 // *****************************************************************************
 // *****************************************************************************
-//S_pwmSettings PWMData;      // pour les settings
+
 // *****************************************************************************
 /* Application Data
 
@@ -80,8 +77,8 @@ SUBSTITUTE GOODS, TECHNOLOGY, SERVICES, OR ANY CLAIMS BY THIRD PARTIES
     This structure should be initialized by the APP_Initialize function.
     
     Application strings and buffers are be defined outside this structure.
-*/
-
+ */
+S_pwmSettings PWMData;
 APP_DATA appData;
 
 // *****************************************************************************
@@ -91,7 +88,7 @@ APP_DATA appData;
 // *****************************************************************************
 
 /* TODO:  Add any necessary callback functions.
-*/
+ */
 
 // *****************************************************************************
 // *****************************************************************************
@@ -101,8 +98,8 @@ APP_DATA appData;
 
 
 /* TODO:  Add any necessary local functions.
-*/
-S_pwmSettings PWMData;
+ */
+
 
 // *****************************************************************************
 // *****************************************************************************
@@ -118,17 +115,15 @@ S_pwmSettings PWMData;
     See prototype in app.h.
  */
 
-void APP_Initialize ( void )
-{
+void APP_Initialize(void) {
     /* Place the App state machine in its initial state. */
     appData.state = APP_STATE_INIT;
 
-    
+
     /* TODO: Initialize your application's state machine and other
      * parameters.
      */
 }
-
 
 /******************************************************************************
   Function:
@@ -138,61 +133,36 @@ void APP_Initialize ( void )
     See prototype in app.h.
  */
 
-void APP_Tasks ( void )
-{
+void APP_Tasks(void) {
 
     /* Check the application's current state. */
-    switch ( appData.state )
-    {
-        /* Application's initial state. */
-        case APP_STATE_INIT:                //Etat d'initialisation
-        {   
-            //Initialise les params pour pwm 
-            GPWM_Initialize(&PWMData);
-            DRV_TMR0_Start();  // start du timer 1
-                        
-            //init du LCD
-            lcd_init();
-            lcd_bl_on();
-            //déplacement du curseur
-            lcd_gotoxy(C1,L1);
-            //Affichage sur ligne 1 
-            printf_lcd("TP1 PWM 2024-25");
-            //déplacement du curseur
-            lcd_gotoxy(C1,L2);
-            
-            printf_lcd("Stefanelli Matteo");
-            lcd_gotoxy(C1,L3);
-            printf_lcd("Clauzel Aymeric");
-            
-            //init de l'AD
-            BSP_InitADC10();
-            
-            //Eteindre les leds
-            FullLedOff();         //extinction de toutes les leds
-        
-            
-            //next case 
+    switch (appData.state) {
+            /* Application's initial state. */
+        case APP_STATE_INIT:
+        {
+            // Initialisation
+            initialisation();
+
             appData.state = APP_STATE_WAIT;
-            
-            break;
-        }
-        
-        case APP_STATE_WAIT:                //Etat d'attente 
-        {
-            break;
-        }
-        
-        case APP_STATE_SERVICE_TASKS:       //Etat d'execution
-        {
-        
+
             break;
         }
 
-        /* TODO: implement your application state machine.*/
-        
+        case APP_STATE_SERVICE_TASKS:
+        {
+            appData.state = APP_STATE_WAIT;
+            break;
+        }
 
-        /* The default state should never be executed. */
+        case APP_STATE_WAIT:
+        {
+            break;
+        }
+
+            /* TODO: implement your application state machine.*/
+
+
+            /* The default state should never be executed. */
         default:
         {
             /* TODO: Handle error in application's state machine. */
@@ -200,53 +170,93 @@ void APP_Tasks ( void )
         }
     }
 }
-/***************************************************************
-*                                                             *
-*                       APP_UpdateState                       *
-*                                                             *
-* Description : Cette fonction change l'état de la SM         *
-* structure                                                   *
-* Paramètres d'entrée : Nom/type                              *
-*   -newState : APP_STATES                                    *
-*                                             *
-*                                                             *
-* Paramètre de sortie : type                                  *
-*   -                                                      *
-*                                                             *
-***************************************************************/
-void APP_UpdateState(APP_STATES newState)
+/* Fonction :
+    void APP_Timer1CallBack(void)
+ 
+  Description :
+	Fonction de callback pour le timer 1
+    avec un compteur afin de laisser l'écran d'init au lancement de 3 secondes
+  Paramètres :	
+    -
+*/
+
+void APP_Timer1CallBack(void) {
+
+    static uint8_t CntInit = 0;
+    // compteur qui gere le temps d'init
+    CntInit++;
+    if (CntInit >= TEMP_INIT) 
+    {
+        // Appelle de la fonction pour les settings
+        GPWM_GetSettings(&PWMData);
+        //appelle de la fonction pour l'affiche
+        GPWM_DispSettings(&PWMData);
+        //appelle de fonction execution PWM
+        GPWM_ExecPWM(&PWMData);
+        CntInit = 150;
+        APP_UpdateState(APP_STATE_SERVICE_TASKS);
+    }
+
+
+}
+
+void APP_Timer2CallBack(void) 
 {
+    
+}
+
+void APP_Timer3CallBack(void) 
+{
+    
+}
+
+void APP_Timer4CallBack(void) 
+{
+
+    GPWM_ExecPWMSoft(&PWMData);
+}
+
+void APP_UpdateState(APP_STATES newState) {
     appData.state = newState;
 }
 
+/* Fonction :
+    void Initialisation(void)
+ 
+  Description :
+    permet d'initialiser le lcd, l'adc. Affiche les lignes initiales sur le LCD
+	et appel la fonction GPWM_Initialize(&PWMData);
+ 
+  Paramètres :	
+    -
+*/
 
-
-
-
-
-/******************************************************************************/
-
-/*Fonction pour eteindre et allumer les leds (toutes les leds)*/
-
-// Prototypes :
-                  /*   void FullLedOn(void);   */
-                  /*   void FullLedOff(void);   */  
-                   /*voir dans app.h*/
-
-void FullLedOn(void)
+void initialisation(void) 
 {
-    BSP_LEDOn(BSP_LED_0);
-    BSP_LEDOn(BSP_LED_1);
-    BSP_LEDOn(BSP_LED_2);
-    BSP_LEDOn(BSP_LED_3);
-    BSP_LEDOn(BSP_LED_4);
-    BSP_LEDOn(BSP_LED_5);
-    BSP_LEDOn(BSP_LED_6);
-    BSP_LEDOn(BSP_LED_7);  
+    lcd_init(); //initialise le LCD
+    printf_lcd("TP1 PWM 2024-2025"); //affiche sur le LCD
+    lcd_gotoxy(1, 2); //va sur la deuxieme ligne de l'ecran LCD
+    printf_lcd("Besson Nicolas"); //affiche sur le LCD
+    lcd_gotoxy(1, 3); //va sur la deuxieme ligne de l'ecran LCD
+    printf_lcd("Bucher Mathieu"); //affiche sur le LCD
+    lcd_bl_on(); //allume les Backlight
+    BSP_InitADC10(); //initialisae l'adc
+    LEDOff(); //éteint toutes les leds
+    GPWM_Initialize(&PWMData);
 }
 
- void FullLedOff(void)
-{
+/* Fonction :
+    void LEDOff(void)
+ 
+  Description :
+    Cette fonction éteints les leds 0 à 7
+ 
+  Paramètres :	
+    -
+*/
+
+void LEDOff(void) {
+    //Eteints les leds 0 Ã  7
     BSP_LEDOff(BSP_LED_0);
     BSP_LEDOff(BSP_LED_1);
     BSP_LEDOff(BSP_LED_2);
@@ -254,7 +264,10 @@ void FullLedOn(void)
     BSP_LEDOff(BSP_LED_4);
     BSP_LEDOff(BSP_LED_5);
     BSP_LEDOff(BSP_LED_6);
-    BSP_LEDOff (BSP_LED_7);
-   
+    BSP_LEDOff(BSP_LED_7);
 }
 
+
+/*******************************************************************************
+ End of File
+ */
