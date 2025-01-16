@@ -77,8 +77,73 @@ void InitFifoComm(void)
 int GetMessage(S_pwmSettings *pData)
 {
     int commStatus = 0;
-    
+    static int recalculCRC = 0;
+    static int CRCRecu = 0;
+    static int nbCharToRead = 0;
+    static int compteurErreurs = 0;
     // Traitement de réception à introduire ICI
+    nbCharToRead = GetReadSize (&descrFifoRX);
+    
+    if(nbCharToRead >= 5)
+    {
+        /*
+        if(nbCharToRead > 5)
+        {
+            RxMess.Start = 0x00;
+        }*/
+        GetCharFromFifo(&descrFifoRX, RxMess->Start );
+        if(RxMess.Start == 0xAA)
+        {
+            GetCharFromFifo(&descrFifoRX, RxMess->Speed );
+            if(RxMess.Speed >= -99 || RxMess.Speed <= 99)
+            {
+                GetCharFromFifo(&descrFifoRX, RxMess->Angle );
+                if(RxMess.Angle >= -90 || RxMess.Angle <= 90)
+                {
+                   
+                    GetCharFromFifo(&descrFifoRX, RxMess->MsbCrc );
+                    GetCharFromFifo(&descrFifoRX, RxMess->LsbCrc );
+                    
+                    recalculCRC = 0xffff;
+                    
+                    recalculCRC = updateCRC16(recalculCRC, 0xAA);
+                    recalculCRC = updateCRC16(recalculCRC, RxMess->Speed);
+                    recalculCRC = updateCRC16(recalculCRC, RxMess->Angle);
+                    
+                    
+                    CRCRecu = << 8 RxMess.MsbCrc;
+                    CRCRecu = (CRCRecu & 0xff00) | RxMess.LsbCrc;
+                    
+                    if(recalculCRC == CRCRecu)
+                    {
+                        pData->SpeedSetting = RxMess->Speed;
+                        pData->absAngle = RxMess->Angle;
+                        compteurErreurs = 0;
+                        return 1;
+                    }
+                    else
+                    {
+                        return 0;
+                    }
+                }
+                else
+                {
+                    return 0;
+                }
+            }
+            else
+            {
+                return 0;
+            }
+        }
+        else
+        {
+            return 0;
+        }
+    }
+
+    
+    
     // Lecture et décodage fifo réception
     // ...
     
