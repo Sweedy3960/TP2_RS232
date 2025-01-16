@@ -94,18 +94,6 @@ void __ISR(_TIMER_3_VECTOR, ipl0AUTO) IntHandlerDrvTmrInstance2(void)
     PLIB_INT_SourceFlagClear(INT_ID_0,INT_SOURCE_TIMER_3);
     APP_Timer3CallBack();
 }
-void __ISR(_TIMER_4_VECTOR, ipl7AUTO) IntHandlerDrvTmrInstance3(void)
-{
-    //BSP_LEDToggle(BSP_LED_1);
-    BSP_LEDOn(BSP_LED_1);
-    PLIB_INT_SourceFlagClear(INT_ID_0,INT_SOURCE_TIMER_4);
-    APP_Timer4CallBack();
-    BSP_LEDOff(BSP_LED_1);
-
-    //BSP_LEDToggle(BSP_LED_7);
-    
-    
-}
 
  /*******************************************************************************
  End of File

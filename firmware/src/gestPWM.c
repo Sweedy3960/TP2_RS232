@@ -50,7 +50,7 @@ void GPWM_Initialize(S_pwmSettings *pData)
     DRV_TMR0_Start();   // Start du timer 1
     DRV_TMR1_Start();   // Start du timer 2
     DRV_TMR2_Start();   // Start du timer 3
-    DRV_TMR3_Start(); // Start du timer 4
+    
     
     DRV_OC0_Start();    // Start de l'OC 2
     DRV_OC1_Start();    // Start de l'OC 3
