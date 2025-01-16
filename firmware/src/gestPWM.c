@@ -185,7 +185,7 @@ void GPWM_ExecPWM(S_pwmSettings *pData)
 {
     
     static int PulseWidthVitesse;
-    static int PulseWidthAngle;
+    //static int PulseWidthAngle;
     
     // Gestion sens Moteur et PWM
     
