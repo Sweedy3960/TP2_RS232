@@ -62,66 +62,51 @@ SUBSTITUTE GOODS, TECHNOLOGY, SERVICES, OR ANY CLAIMS BY THIRD PARTIES
 #include "system/common/sys_common.h"
 #include "app.h"
 #include "system_definitions.h"
-#include "gestPWM.h"
-#include "bsp.h"
+
 // *****************************************************************************
 // *****************************************************************************
 // Section: System Interrupt Vector Functions
 // *****************************************************************************
 // *****************************************************************************
-S_pwmSettings pData;  
+
+ 
 
 void __ISR(_TIMER_1_VECTOR, ipl4AUTO) IntHandlerDrvTmrInstance0(void)
 {
-    static uint8_t counter3sec;
-    //allume led 0 pour mesure 
-    BSP_LEDOn(BSP_LED_0);
-    //si compteur dépasse les 3 secondes 
-    if (counter3sec > _3STIMER)
-    {   
-        //appels des fonction demandés par le cdc 
-        GPWM_GetSettings(&pData);
-        GPWM_DispSettings(&pData);
-        GPWM_ExecPWM(&pData);
-        //réinitialise le compteur
-        counter3sec = (_3STIMER-1); 
-    }
-    else
-    {
-        //incrément
-        counter3sec ++;
-    }
-    //remet à 0 le flag pour libére
+    BSP_LEDToggle(BSP_LED_0);
+    //BSP_LEDOn(BSP_LED_0);
     PLIB_INT_SourceFlagClear(INT_ID_0,INT_SOURCE_TIMER_1);
-    //éteidn la led
-    BSP_LEDOff(BSP_LED_0); 
-   
+    APP_Timer1CallBack();
+    //BSP_LEDOff(BSP_LED_0);
+    
 }
 void __ISR(_TIMER_2_VECTOR, ipl0AUTO) IntHandlerDrvTmrInstance1(void)
 {
-    //remet à 0 le flag
+    
     PLIB_INT_SourceFlagClear(INT_ID_0,INT_SOURCE_TIMER_2);
+    
+    APP_Timer2CallBack();
+    
+    
 }
 void __ISR(_TIMER_3_VECTOR, ipl0AUTO) IntHandlerDrvTmrInstance2(void)
 {
-    //remet à 0 le flag
     PLIB_INT_SourceFlagClear(INT_ID_0,INT_SOURCE_TIMER_3);
+    APP_Timer3CallBack();
 }
-void __ISR(_TIMER_4_VECTOR, ipl4AUTO) IntHandlerDrvTmrInstance3(void)
+void __ISR(_TIMER_4_VECTOR, ipl7AUTO) IntHandlerDrvTmrInstance3(void)
 {
-    //allume la LED 1 pour mesures
+    //BSP_LEDToggle(BSP_LED_1);
     BSP_LEDOn(BSP_LED_1);
-
-    // Exécute la PWM logiciel
-    GPWM_ExecPWMSoft(&pData);
-
-    // Éteint la LED BSP_LED_1 après la PWM logiciel
+    PLIB_INT_SourceFlagClear(INT_ID_0,INT_SOURCE_TIMER_4);
+    APP_Timer4CallBack();
     BSP_LEDOff(BSP_LED_1);
 
-    //remet à 0 le flag
-    PLIB_INT_SourceFlagClear(INT_ID_0, INT_SOURCE_TIMER_4);
+    //BSP_LEDToggle(BSP_LED_7);
+    
+    
 }
- 
+
  /*******************************************************************************
  End of File
 */

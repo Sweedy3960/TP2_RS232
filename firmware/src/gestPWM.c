@@ -4,188 +4,194 @@
 //	Description :	Gestion des PWM 
 //			        pour TP1 2016-2017
 //
-//	Auteur 		: 	C. HUBER
+//	Auteur 		: 	MBR NBN
 //
 //	Version		:	V1.1
 //	Compilateur	:	XC32 V1.42 + Harmony 1.08
 //
 /*--------------------------------------------------------*/
- 
- 
+
+
+#include "app.h"
 #include "GestPWM.h"
 #include "Mc32DriverLcd.h"
 #include "bsp.h"
-#include "app.h"
-#include "Mc32DriverAdc.h"
-#include "C:\microchip\harmony\v2_06\framework\peripheral\oc\plib_oc.h"
+#include "math.h"
+#include "peripheral/oc/plib_oc.h"
 
-/***************************************************************
-*                                                             *
-*                       GPWM_Initialize                       *
-*                                                             *
-* Description : Cette fonction initialise les champs de la    *
-* structure                                                   *
-* Paramètres d'entrée : Nom/type                              *
-*   -pData : S_pwmSettings                                    *
-*                                                             *
-*                                                             *
-* Paramètre de sortie :                                       *
-*   -.                                                        *
-*                                                             *
-***************************************************************/
+S_pwmSettings PWMData;      // pour les settings
+APP_DATA appData;
+
+// *****************************************************************************
+/* Fonction :
+    void GPWM_Initialize(S_pwmSettings *pData)
+ 
+  Description :
+    Cette fonction initialise les parametre la structure de données	
+ 
+  Paramètres :	
+    - pData : Pointe la structure de paramètres PWM (S_pwmSettings).
+ 
+   
+*/
+// *****************************************************************************
 void GPWM_Initialize(S_pwmSettings *pData)
 {
-   // Init les data 
-    pData->absSpeed=0;   // vitesse 0 à 99
-    pData->absAngle=0;    // Angle  0 à 180
-    pData->SpeedSetting=0; // consigne vitesse -99 à +99
-    pData->AngleSetting=0;
-   // Init état du pont en H
-   BSP_EnableHbrige();
-    // lance les tmers et OC
-   DRV_TMR0_Start();  
-   DRV_TMR1_Start();
-   DRV_TMR2_Start();
-   DRV_TMR3_Start();
-   DRV_OC0_Start();
-   DRV_OC1_Start();
+    // Init les data
+    pData->SpeedSetting = 0;    // SpeedSetting mis à 0
+    pData->absSpeed = 0;        // absSpeed mis à 0
+    pData->absAngle = 0;        // absAngle mis à 0
+
+    
+    // Init état du pont en H
+    BSP_EnableHbrige();
+    
+    // lance les timers et OC
+    DRV_TMR0_Start();   // Start du timer 1
+    DRV_TMR1_Start();   // Start du timer 2
+    DRV_TMR2_Start();   // Start du timer 3
+    DRV_TMR3_Start(); // Start du timer 4
+    
+    DRV_OC0_Start();    // Start de l'OC 2
+    DRV_OC1_Start();    // Start de l'OC 3
 }
+
+// *****************************************************************************
+/* Fonction :
+    void GPWM_GetSettings(S_pwmSettings *pData)
  
-/***************************************************************
-*                                                             *
-*                       GPWM_GetSettings                       *
-*                                                             *
-* Description : Cette fonction calcul les consignes fct de pot*
-* structure                                                   *
-* Paramètres d'entrée : Nom/type                              *
-*   -pData : S_pwmSettings                                    *
-*                                                             *
-*                                                             *
-* Paramètre de sortie :                                       *
-*   -.                                                        *
-*                                                             *
-***************************************************************/
-// Obtention vitesse et angle (mise a jour des 4 champs de la structure)
+  Description :
+    Récupère la valeur de vitesse et de l'angle, a l'aide des AD.
+    AD(CH0) vitesse
+    AD(CH1) angle
+    Une moyenne glissante est effectuer sur les valeur lue par l'AD 	
+ 
+  Paramètres :	
+    - pData : Pointe la structure de paramètres PWM (S_pwmSettings).
+ 
+   
+*/
+// *****************************************************************************
 void GPWM_GetSettings(S_pwmSettings *pData)	
 {
-    //structure pour résultat de L'AD 
-    S_ADCResults AdcRes;
-    // Lecture du convertisseur AD
-    AdcRes = BSP_ReadAllADC();
-    //Calcul du réglage de vittesse  MoyenneADC / 1023 * 198 - 99 
-    pData->SpeedSetting = ((abs(((float)Sweepingmoy(&AdcRes,0)/MAXVALAD)*ANGLEMAX))-OFFSETORIG);
-    //valeure absolue du calcul plus haut
-    pData->absSpeed =abs( pData->SpeedSetting);
-    
-    //Calcul du réglage de vittesse  MoyenneADC *180/1023
-    pData->absAngle = (((float)Sweepingmoy(&AdcRes,1)*ANGLE_ABS)/MAXVALAD);    // Angle  0 à 180
-    //réglage de l'angle en prenant compte du signe
-    pData->AngleSetting = pData->absAngle-MAXANGLE; // consigne angle  -90 à +90
-  
-}
-/***************************************************************
-*                                                             *
-*                       Sweepingmoy                           *
-*                                                             *
-* Description : Cette fonction ser a calculer la moyenne glissante*
-* structure                                                   *
-* Paramètres d'entrée : Nom/type                              *
-*   -AdcRes : S_ADCResults                                    *
-*   -chan  : int                                              *
-*                                                             *
-* Paramètre de sortie : type                                  *
-*   -int                                                      *
-*                                                             *
-***************************************************************/
-int Sweepingmoy(S_ADCResults *AdcRes,int chan)
+// Déclaration des variables statiques pour stocker les valeurs ADC pour la moyenne glissante
+static uint16_t valeur_ADC1[TAILLEMOYENNEGLISSANTE] = {0};  // Tableau pour stocker les valeurs de Chan0 (ADC1)
+static uint16_t valeur_ADC2[TAILLEMOYENNEGLISSANTE] = {0};  // Tableau pour stocker les valeurs de Chan1 (ADC2)
+static uint16_t indexMoyenneGlissante = 0;                  // Indice pour suivre la position dans les tableaux de moyenne glissante
+uint8_t indexValeurMoyenneADC;                               // Variable pour itérer dans les tableaux de moyenne glissante
+uint16_t somme1 = 0;                                         // Somme des valeurs de Chan0 pour le calcul de la moyenne
+uint16_t somme2 = 0;                                         // Somme des valeurs de Chan1 pour le calcul de la moyenne
+uint16_t moyenne1;                                           // Moyenne calculée pour Chan0
+uint16_t moyenne2;                                           // Moyenne calculée pour Chan1
+
+// Lecture des valeurs ADC
+appData.AdcRes = BSP_ReadAllADC();
+
+// Stockage des nouvelles valeurs ADC dans les tableaux 
+valeur_ADC1[indexMoyenneGlissante] = appData.AdcRes.Chan0;
+valeur_ADC2[indexMoyenneGlissante] = appData.AdcRes.Chan1; 
+
+// Mise à jour de l'indice pour la prochaine valeur
+indexMoyenneGlissante++;
+
+// Si l'indice dépasse la taille du tableau, il est réinitialisé
+if (indexMoyenneGlissante >= MOYENNE_GLISSANTE_PLAGE)  
 {
-    //tableau pour echantillons moyenne glissante
-    static int buff1[11] = {0}; 
-    static int buff2[11] = {0}; 
-    //variable de comtptage pour echantillon
-    static int iterator = 0;
-    //variable de comtptage pour moyenne
-    int i;
-    // Stocker la valeur dans le buffer adéquat
-    buff2[iterator] = AdcRes->Chan1;
-    buff1[iterator] = AdcRes->Chan0;
-   
-    // Incrémenter l'itérateur et gérer le retour à zéro
-    iterator++;
-    if (iterator == 10)
-    {
-        iterator = 0;
-     
-    }
-
-    // Calculer la moyenne
-
-  
-        buff1[10] = 0; // Réinitialiser la somme avant de la recalculer
-        buff2[10] = 0;
-        for (i = 0; i < 10; i++) 
-        {
-            buff1[10] += buff1[i]; 
-            buff2[10] += buff2[i];
-        }
-    //selon le canal choisit en entrée renvois la bonne moyenne
-    return (chan)? (buff1[10] / 10):(buff2[10] / 10);
+    indexMoyenneGlissante = 0;  // Réinitialisation de l'indice
 }
-/***************************************************************
-*                                                             *
-*                       GPWM_DispSettings                     *
-*                                                             *
-* Description : Cette fonction fait l'affichage               *
-* des information en exploitant la structure                  *
-*  structure                                                  *
-* Paramètres d'entrée : Nom/type                              *
-*   -pData : S_pwmSettings                                    *
-* Paramètre de sortie :                                       *
-*   -.                                                        *
-*                                                             *
-***************************************************************/
- 
 
+// Calcul de la somme de toutes les valeurs dans les tableaux pour les deux canaux ADC
+for (indexValeurMoyenneADC = 0; indexValeurMoyenneADC < TAILLEMOYENNEGLISSANTE; indexValeurMoyenneADC++)
+{
+    somme1 += valeur_ADC1[indexValeurMoyenneADC]; 
+    somme2 += valeur_ADC2[indexValeurMoyenneADC];  
+}
+
+// Calcul des moyennes des deux canaux ADC
+moyenne1 = somme1 / TAILLEMOYENNEGLISSANTE; 
+moyenne2 = somme2 / TAILLEMOYENNEGLISSANTE; 
+
+// Calcul du paramètre SpeedSetting basé sur la moyenne de Chan0
+pData->SpeedSetting = (((moyenne1 * VALEURECARTNEGPOS) / ADC_RES) - VALEURMAXVITESSE); 
+
+// Calcul de la vitesse absolue en fonction de SpeedSetting
+pData->absSpeed = abs(pData->SpeedSetting);
+
+// Calcul de l'angle en fonction de la moyenne de Chan1 (en degrés)
+pData->absAngle = ((ADC1_Angle_M * moyenne2) / ADC_RES);  
+
+// Calcul de l'angle
+pData->AngleSetting = (((ADC1_Angle_M * moyenne2) / ADC_RES) - ADC1_Angle_90);  
+}
+
+
+// *****************************************************************************
+/* Fonction :
+    void GPWM_DispSettings(S_pwmSettings *pData)
+ 
+  Description :
+  Cette fonction permet de controller l'afficheur LCD, pour qu'il afficher les 
+  valeur souhaitée
+ 
+  Paramètres :
+    - pData : Un pointeur vers la structure de paramètres PWM (S_pwmSettings)
+ 
+ 
+*/
+// *****************************************************************************
 void GPWM_DispSettings(S_pwmSettings *pData)
 {
-    //déplacement du curseur
-    lcd_gotoxy(C1,L2);
-    //affiche valeure ded réglage de vitesse 
-    printf_lcd("SpeedSetting: %4d", pData->SpeedSetting);
-    //vide la ligne
-    lcd_ClearLine(L3);
-    //déplacement du curseur
-    lcd_gotoxy(C1,L3);
-    //affiche la vitesse absole 
-    printf_lcd("AbsSpeed: %3d",  pData->absSpeed);
-    //déplacement du curseur
-    lcd_gotoxy(C1,L4);
-    //Affiche la vlaeur absolue de l'angle
-    printf_lcd("AbsAnlge: %3d",  pData->AngleSetting);
-  
-    
-}
- /***************************************************************
-*                                                             *
-*                       GPWM_ExecPWM                     *
-*                                                             *
-* Description : Cette fonction paramèter le pont en H         *
-* Fonction de l'angle reglé et  paramètre L'OC                *
-*  structure                                                  *
-* Paramètres d'entrée : Nom/type                              *
-*   -pData : S_pwmSettings                                    *
-*                                                             *
-* Paramètre de sortie :                                       *
-*   -.                                                        *
-*                                                             *
-***************************************************************/
 
+    lcd_gotoxy(1,1);                         // Positionne le curseur à la ligne 1, colonne 1
+    printf_lcd("TP1 PWM 2024-2025");         // Affiche le titre du projet sur l'écran LCD
+ 
+    lcd_gotoxy(1,2);                         
+    printf_lcd("SpeedSetting");              // Affiche le "SpeedSetting"
+    if(pData->SpeedSetting < 0)              // Vérifie si la vitesse est négative
+    {
+        lcd_gotoxy(15,2);                    
+        printf_lcd("%3d",pData->SpeedSetting); // Affiche la vitesse négative 
+    }
+    else
+    {
+        lcd_gotoxy(16,2);                    
+        printf_lcd("%2d",pData->SpeedSetting); // Affiche la vitesse positive
+    }
+    lcd_gotoxy(1,3);                         
+    printf_lcd("absSpeed");                  // Affiche "absSpeed"
+    lcd_gotoxy(16,3);                        
+    printf_lcd("%2d",pData->absSpeed);       // Affiche la vitesse absolue
+ 
+    lcd_gotoxy(1,4);                         // Positionne le curseur à la ligne 4, colonne 1
+    printf_lcd("Angle");                     // Affiche "Angle"
+    lcd_gotoxy(14,4);                        
+    printf_lcd("%4d",pData->AngleSetting);   // Affiche la valeur de l'angle avec un format de 4 chiffres
+}
+
+// *****************************************************************************
+/* Fonction :
+    void GPWM_ExecPWM(S_pwmSettings *pData)
+ 
+  Description :
+    Cette fonction permet de gerer les differente sortie nécessaire pour
+    le moteur de l'angle ainsi que pour la vitesse
+ 
+  Paramètres :
+- pData : Un pointeur vers la structure de paramètres PWM (S_pwmSettings)
+ 
+*/
+// *****************************************************************************
 void GPWM_ExecPWM(S_pwmSettings *pData)
 {
-    //selon signe de le réglage de vitesse 
+    
+    static int PulseWidthVitesse;
+    //static int PulseWidthAngle;
+    
+    // Gestion sens Moteur et PWM
+    
     if(pData->SpeedSetting > 0)
     {
-        //paramètrage de la direction 
+        //paramètrage de la sens horraire
         AIN1_HBRIDGE_W = 1;
         AIN2_HBRIDGE_W = 0;
         STBY_HBRIDGE_W = 1;
@@ -193,60 +199,51 @@ void GPWM_ExecPWM(S_pwmSettings *pData)
     
     else if (pData->SpeedSetting < 0)
     {
-        //paramètrage de la direction 
+        //paramètrage de la sens  anti-horraire
         AIN1_HBRIDGE_W = 0;
         AIN2_HBRIDGE_W = 1;
         STBY_HBRIDGE_W = 1;
     }
-    else 
+    // met le moteur en standby
+    else if(pData->SpeedSetting == 0)
     {
-        //met en Standby 
         STBY_HBRIDGE_W = 0; 
     }
+        
     
-    //Calcul pour faire correspondre valeure de vitesse en % en Tick pour compteur(timer2) pour moteur DC
-    PLIB_OC_PulseWidth16BitSet(OC_ID_2, (pData->absSpeed*VAL_MAX_TIMER2)/DIVISION);
-    //Calcul pour faire correspondre valeure de l'angle  en ° en Tick pour compteur(timer3) pour servo
-    PLIB_OC_PulseWidth16BitSet(OC_ID_3, (((pData->absAngle)*(MAXTICK_TIMER3/ANGLE_ABS)))+VAL06MS);
+    // Calcul de la largeur d'impulsion pour la sortie OC3 en fonction de l'angle
+   
+    PLIB_OC_PulseWidth16BitSet(OC_ID_3, ((pData->absAngle * PLAGE_OC3 ) / PLAGE_ANGLE_MAX ) + OFFSET_OC3);  //Permet de generer le PWM en choisissant l'OC et la largeur d'impulsion
+    
+    // Calcul de la largeur d'impulsion pour la sortie OC2 en fonction de l'angle
+    PulseWidthVitesse = ((pData->absSpeed * DRV_TMR1_PeriodValueGet())/99);
+    PLIB_OC_PulseWidth16BitSet(OC_ID_2,PulseWidthVitesse);        ///Permet de generer le PWM en choisissant l'OC et la largeur d'impulsion
 }
- /***************************************************************
-*                                                             *
-*                       GPWM_ExecPWMSoft                      *
-*                                                             *
-* Description : Cette fonction sert de remplacement à l'OC    *
-* elle allume et éteind la led demandée par le CDC            *
-*  structure                                                  *
-* Paramètres d'entrée : Nom/type                              *
-*   -pData : S_pwmSettings                                    *
-*                                             *
-*                                                             *
-* Paramètre de sortie :                                       *
-*   -.                                                        *
-*                                                             *
-***************************************************************/
+
 // Execution PWM software
 void GPWM_ExecPWMSoft(S_pwmSettings *pData)
 {
-    static uint8_t cnt = 0;
-
-    // Dans le cas ou la valeure de vitesse dépasse le cnt 
-    if (pData->absSpeed > cnt)
+    static uint8_t compteur = 0;
+ 
+    // Eteint la led si la vitess et plus grande que le compteur
+    if (pData->absSpeed > compteur)
     {
-        //éteinnd la led 
         BSP_LEDOff(BSP_LED_2);
     }
     else
     {
-        //Sinon l'allume 
+        // Sinon, allumer la LED
         BSP_LEDOn(BSP_LED_2);
     }
-
-    //incrémentation compteur
-    cnt++;
-    //test valeure max compteur(99))
-    if (cnt >= OFFSETORIG)
+ 
+    // Incrémente le compteur
+    compteur++;
+ 
+    // Remet à zéro le compteur s'il dépasse la valeur 99
+    if (compteur >= CYCLE_CENT_PWM)
     {
-        //remise à 0
-        cnt = 0;
-    }
+        compteur = 0;
+    }     
 }
+
+
