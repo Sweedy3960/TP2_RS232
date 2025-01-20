@@ -57,6 +57,8 @@ SUBSTITUTE GOODS, TECHNOLOGY, SERVICES, OR ANY CLAIMS BY THIRD PARTIES
 #include "Mc32DriverLcd.h"
 #include "bsp.h"
 #include "gestPWM.h"
+#include "Mc32gest_RS232.h"
+#include "Mc32CalCrc16.h"
 
 // *****************************************************************************
 // *****************************************************************************
@@ -79,6 +81,7 @@ SUBSTITUTE GOODS, TECHNOLOGY, SERVICES, OR ANY CLAIMS BY THIRD PARTIES
     Application strings and buffers are be defined outside this structure.
  */
 S_pwmSettings PWMData;
+S_pwmSettings PWMDataToSend;
 APP_DATA appData;
 
 // *****************************************************************************
@@ -142,7 +145,7 @@ void APP_Tasks(void) {
         {
             // Initialisation
             initialisation();
-
+            InitFifoComm();
             appData.state = APP_STATE_WAIT;
 
             break;
@@ -150,8 +153,47 @@ void APP_Tasks(void) {
 
         case APP_STATE_SERVICE_TASKS:
         {
-            appData.state = APP_STATE_WAIT;
+            int CommStatus =0;
+            int cnt=0;
+            
+            
+            // Réception param. remote 
+            CommStatus = GetMessage(&PWMData);
+            
+           
+            if (CommStatus == 0) // local ?
+            {
+                GPWM_GetSettings(&PWMData); // local
+                
+            }
+            else
+            {
+                GPWM_GetSettings(&PWMDataToSend); // remote
+               
+            }            
+            
+            GPWM_DispSettings(&PWMData, CommStatus);
+            
+           cnt++;
+            if (cnt == 5)
+            {
+                cnt = 0;
+                // Envoi valeurs 
+                if (CommStatus == 0) // local ?
+                {
+                    GPWM_ExecPWM(&PWMData); // local
+                }
+                else
+                {
+                    SendMessage(&PWMDataToSend); // remote
+                }
+                appData.state = APP_STATE_WAIT; 
+            }
             break;
+
+            // Lecture pot. 
+            
+         
         }
 
         case APP_STATE_WAIT:
@@ -187,12 +229,7 @@ void APP_Timer1CallBack(void) {
     CntInit++;
     if (CntInit >= TEMP_INIT) 
     {
-        // Appelle de la fonction pour les settings
-        GPWM_GetSettings(&PWMData);
-        //appelle de la fonction pour l'affiche
-        GPWM_DispSettings(&PWMData);
-        //appelle de fonction execution PWM
-        GPWM_ExecPWM(&PWMData);
+        
         CntInit = 150;
         APP_UpdateState(APP_STATE_SERVICE_TASKS);
     }
@@ -236,7 +273,7 @@ void initialisation(void)
     lcd_init(); //initialise le LCD
     printf_lcd("TP1 PWM 2024-2025"); //affiche sur le LCD
     lcd_gotoxy(1, 2); //va sur la deuxieme ligne de l'ecran LCD
-    printf_lcd("Besson Nicolas"); //affiche sur le LCD
+    printf_lcd("Clauzel Aymeric "); //affiche sur le LCD
     lcd_gotoxy(1, 3); //va sur la deuxieme ligne de l'ecran LCD
     printf_lcd("Bucher Mathieu"); //affiche sur le LCD
     lcd_bl_on(); //allume les Backlight
