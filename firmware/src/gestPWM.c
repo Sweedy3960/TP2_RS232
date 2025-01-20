@@ -139,12 +139,19 @@ pData->AngleSetting = (((ADC1_Angle_M * moyenne2) / ADC_RES) - ADC1_Angle_90);
  
 */
 // *****************************************************************************
-void GPWM_DispSettings(S_pwmSettings *pData)
+void GPWM_DispSettings(S_pwmSettings *pData, int remote)
 {
 
     lcd_gotoxy(1,1);                         // Positionne le curseur à la ligne 1, colonne 1
-    printf_lcd("TP1 PWM 2024-2025");         // Affiche le titre du projet sur l'écran LCD
- 
+    if(remote)
+    {
+        printf_lcd("remote settings");         // Affiche le titre du projet sur l'écran LCD
+    }
+    else
+    {
+         printf_lcd("local settings"); 
+    }
+    
     lcd_gotoxy(1,2);                         
     printf_lcd("SpeedSetting");              // Affiche le "SpeedSetting"
     if(pData->SpeedSetting < 0)              // Vérifie si la vitesse est négative

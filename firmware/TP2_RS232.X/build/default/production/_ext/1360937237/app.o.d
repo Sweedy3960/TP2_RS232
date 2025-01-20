@@ -58,7 +58,7 @@ build/default/production/_ext/1360937237/app.o: ../src/app.c ../src/app.h \
  ../../../../../../../framework/driver/oc/drv_oc.h \
  ../../../../../../../framework/driver/driver_common.h \
  ../src/system_config/default/framework/driver/oc/drv_oc_static.h \
- ../src/system_config/default/framework/system/devcon/sys_devcon.h \
+ ../../../../../../../framework/system/devcon/sys_devcon.h \
  ../../../../../../../framework/system/system.h \
  ../../../../../../../framework/system/clk/sys_clk.h \
  ../../../../../../../framework/peripheral/osc/plib_osc.h \
@@ -275,7 +275,8 @@ build/default/production/_ext/1360937237/app.o: ../src/app.c ../src/app.h \
  ../../../../../../../framework/system/ports/sys_ports.h \
  ../../../../../../../framework/system/ports/sys_ports_definitions.h \
  ../src/app.h ../../../../../../../bsp/pic32mx_skes/Mc32DriverAdc.h \
- ../../../../../../../bsp/pic32mx_skes/Mc32DriverLcd.h ../src/gestPWM.h
+ ../../../../../../../bsp/pic32mx_skes/Mc32DriverLcd.h ../src/gestPWM.h \
+ ../src/Mc32gest_RS232.h ../src/GesFifoTh32.h ../src/Mc32CalCrc16.h
 
 ../src/app.h:
 
@@ -397,7 +398,7 @@ build/default/production/_ext/1360937237/app.o: ../src/app.c ../src/app.h \
 
 ../src/system_config/default/framework/driver/oc/drv_oc_static.h:
 
-../src/system_config/default/framework/system/devcon/sys_devcon.h:
+../../../../../../../framework/system/devcon/sys_devcon.h:
 
 ../../../../../../../framework/system/system.h:
 
@@ -836,3 +837,9 @@ build/default/production/_ext/1360937237/app.o: ../src/app.c ../src/app.h \
 ../../../../../../../bsp/pic32mx_skes/Mc32DriverLcd.h:
 
 ../src/gestPWM.h:
+
+../src/Mc32gest_RS232.h:
+
+../src/GesFifoTh32.h:
+
+../src/Mc32CalCrc16.h:

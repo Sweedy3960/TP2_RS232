@@ -59,7 +59,7 @@ void GPWM_Initialize(S_pwmSettings *pData);
 
 // Ces 4 fonctions ont pour paramètre un pointeur sur la structure S_pwmSettings.
 void GPWM_GetSettings(S_pwmSettings *pData);	// Obtention vitesse et angle
-void GPWM_DispSettings(S_pwmSettings *pData);	// Affichage
+void GPWM_DispSettings(S_pwmSettings *pData, int remote);	// Affichage
 void GPWM_ExecPWM(S_pwmSettings *pData);		// Execution PWM et gestion moteur.
 void GPWM_ExecPWMSoft(S_pwmSettings *pData);		// Execution PWM software.
 
