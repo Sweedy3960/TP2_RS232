@@ -154,34 +154,26 @@ void APP_Tasks(void) {
         case APP_STATE_SERVICE_TASKS:
         {
             int CommStatus =0;
-            int cnt=0;
+            static int cnt=0;
             
             
             // Réception param. remote 
             CommStatus = GetMessage(&PWMData);
             
            
-            if (CommStatus == 0) // local ?
-            {
-                GPWM_GetSettings(&PWMData); // local
-                
-            }
-            else
-            {
-                GPWM_GetSettings(&PWMDataToSend); // remote
-               
-            }            
+                   
             
             GPWM_DispSettings(&PWMData, CommStatus);
             
-           cnt++;
+            cnt++;
             if (cnt == 5)
             {
                 cnt = 0;
                 // Envoi valeurs 
                 if (CommStatus == 0) // local ?
                 {
-                    GPWM_ExecPWM(&PWMData); // local
+                    GPWM_GetSettings(&PWMData); // local
+                    SendMessage(&PWMData); // remote
                 }
                 else
                 {
@@ -280,6 +272,7 @@ void initialisation(void)
     BSP_InitADC10(); //initialisae l'adc
     LEDOff(); //éteint toutes les leds
     GPWM_Initialize(&PWMData);
+    DRV_USART0_Initialize();
 }
 
 /* Fonction :
