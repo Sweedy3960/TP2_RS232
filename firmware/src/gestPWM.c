@@ -141,7 +141,7 @@ pData->AngleSetting = (((ADC1_Angle_M * moyenne2) / ADC_RES) - ADC1_Angle_90);
 // *****************************************************************************
 void GPWM_DispSettings(S_pwmSettings *pData, int remote)
 {
-
+    lcd_putc('\f');
     lcd_gotoxy(1,1);                         // Positionne le curseur à la ligne 1, colonne 1
     if(remote)
     {
@@ -149,30 +149,24 @@ void GPWM_DispSettings(S_pwmSettings *pData, int remote)
     }
     else
     {
-         printf_lcd("local settings"); 
+
+        printf_lcd("local settings"); 
     }
     
-    lcd_gotoxy(1,2);                         
-    printf_lcd("SpeedSetting");              // Affiche le "SpeedSetting"
-    if(pData->SpeedSetting < 0)              // Vérifie si la vitesse est négative
-    {
-        lcd_gotoxy(15,2);                    
-        printf_lcd("%3d",pData->SpeedSetting); // Affiche la vitesse négative 
-    }
-    else
-    {
-        lcd_gotoxy(16,2);                    
-        printf_lcd("%2d",pData->SpeedSetting); // Affiche la vitesse positive
-    }
-    lcd_gotoxy(1,3);                         
-    printf_lcd("absSpeed");                  // Affiche "absSpeed"
-    lcd_gotoxy(16,3);                        
-    printf_lcd("%2d",pData->absSpeed);       // Affiche la vitesse absolue
- 
-    lcd_gotoxy(1,4);                         // Positionne le curseur à la ligne 4, colonne 1
-    printf_lcd("Angle");                     // Affiche "Angle"
-    lcd_gotoxy(14,4);                        
-    printf_lcd("%4d",pData->AngleSetting);   // Affiche la valeur de l'angle avec un format de 4 chiffres
+    //déplacement du curseur
+    lcd_gotoxy(C1,L2);
+    //affiche valeure ded réglage de vitesse 
+    printf_lcd("SpeedSetting: %4d", pData->SpeedSetting);
+    //vide la ligne
+    lcd_ClearLine(L3);
+    //déplacement du curseur
+    lcd_gotoxy(C1,L3);
+    //affiche la vitesse absole 
+    //printf_lcd("AbsSpeed: %3d",  pData->absSpeed);
+    //déplacement du curseur
+    //lcd_gotoxy(C1,L4);
+    //Affiche la vlaeur absolue de l'angle
+    printf_lcd("AbsAnlge: %3d",  pData->AngleSetting);
 }
 
 // *****************************************************************************

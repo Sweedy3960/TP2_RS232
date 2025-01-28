@@ -147,40 +147,66 @@ void APP_Tasks(void) {
             initialisation();
             InitFifoComm();
             appData.state = APP_STATE_WAIT;
-
             break;
         }
 
         case APP_STATE_SERVICE_TASKS:
         {
-            int CommStatus =0;
+            static int CommStatus =0;
             static int cnt=0;
-            
-            
-            // Réception param. remote 
-            CommStatus = GetMessage(&PWMData);
-            
+            static int cntMessageEronous;
+            static int cyclFlag;
            
+            // Réception param. remote  c'est ca qui v pas 
+            if(CommStatus == 0)
+            {
+                cntMessageEronous++;
+                if(cntMessageEronous >= 10)
+                {
+                    cyclFlag =0;
+                    cntMessageEronous=0;
+                }
+            }
+            else
+            {
+                cyclFlag =1;
+            }
                    
             
-            GPWM_DispSettings(&PWMData, CommStatus);
-            
+            if (cyclFlag == 0) // local ?
+            {
+                    GPWM_GetSettings(&PWMData); // local
+            }
+            else
+            {
+                    GPWM_GetSettings(&PWMDataToSend); // remote
+            }
+            CommStatus = GetMessage(&PWMData);
             cnt++;
-            if (cnt == 5)
+            if (cnt >= 5)
             {
                 cnt = 0;
                 // Envoi valeurs 
-                if (CommStatus == 0) // local ?
+                if (cyclFlag == 0) // local ?
                 {
-                    GPWM_GetSettings(&PWMData); // local
-                    SendMessage(&PWMData); // remote
+                   SendMessage(&PWMData); // local
+                  
+                   
                 }
                 else
                 {
                     SendMessage(&PWMDataToSend); // remote
+                     
                 }
                 appData.state = APP_STATE_WAIT; 
-            }
+                
+                
+            }  
+            GPWM_ExecPWM(&PWMData);
+            GPWM_DispSettings(&PWMData, cyclFlag);
+            
+            
+            appData.state = APP_STATE_WAIT;
             break;
 
             // Lecture pot. 

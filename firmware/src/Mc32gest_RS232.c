@@ -75,62 +75,59 @@ void InitFifoComm(void)
 // Valeur de retour 0  = pas de message reçu donc local (data non modifié)
 // Valeur de retour 1  = message reçu donc en remote (data mis à jour)
 int GetMessage(S_pwmSettings *pData)
-{
-    int commStatus = 0;
-    static uint8_t Decalage = 0, DecalageMessage = 0;
-    int8_t i = 0, j = 0; 
-    uint16_t ValCrc16 = 0xFFFF;
-    int32_t NbCharToRead;
+{   
+    int8_t commStatus = 0;
+    static int16_t recalculCRC = 0;
+    static int16_t CRCRecu = 0;
+    static int8_t nbCharToRead = 0;
+
+    // Struct pour réception des messages
+    StruMess RxMess;    
     // Traitement de réception à introduire ICI
-    // Lecture et décodage fifo réception
-    // ...
-    GetCharFromFifo(&descrFifoRX, &i); // &monFifoRX[0]]
-    fifoRX[Decalage] = i; 
-    if (Decalage > 20)
-        Decalage = 0; 
-    else 
-        Decalage++; 
-    // Message présent dans le FIFO?
-    NbCharToRead = GetReadSize(&descrFifoRX);
-    // Si >= taille message alors traite
-    if (NbCharToRead >= MESS_SIZE)
+    nbCharToRead = GetReadSize (&descrFifoRX);
+    if(nbCharToRead >= 10)
     {
-        //commStatus = 1;
-        // Analyse du contenu du message
-        //test
-        if ((fifoRX[0] == 0xAA) && (fifoRX[5] == 0xAA))
+        if(nbCharToRead > 5)
         {
-            // Calcul du Crc pour vérification du message
-            ValCrc16 = updateCRC16(ValCrc16, 0xAA);
-            ValCrc16 = updateCRC16(ValCrc16, fifoRX[1]);
-            ValCrc16 = updateCRC16(ValCrc16, fifoRX[2]);
-            // Comparaison du Crc calcule avec le Crc recu
-            if (ValCrc16 == ((fifoRX[3] << 8) + fifoRX[4]))
+            RxMess.Start = 0x00;
+        }
+        GetCharFromFifo(&descrFifoRX,(int8_t*)&(RxMess.Start));
+
+
+        if(RxMess.Start == 0xAA)
+        {
+            GetCharFromFifo(&descrFifoRX,(int8_t*)&(RxMess.Speed));
+
+            if(RxMess.Speed >= -99 || RxMess.Speed <= 99)
             {
-                // Mise en memoire des valeurs de vitesse et d'angle recues
-                pData->AngleSetting = fifoRX[1];
-                pData->SpeedSetting = fifoRX[2];
-                pData->absSpeed = abs(fifoRX[2]);
-                // Le message etant complet, on peut le nettoyer de la fifo
-                DecalageMessage = 5;
-                // On renvoie qu'un message a été recu
-                commStatus = 1;
+                GetCharFromFifo(&descrFifoRX, (int8_t*)&(RxMess.Angle));
+                if(RxMess.Angle >= -90 || RxMess.Angle <= 90)
+                {
+                    GetCharFromFifo(&descrFifoRX,(int8_t*)&RxMess.MsbCrc );
+                    GetCharFromFifo(&descrFifoRX, (int8_t*)&RxMess.LsbCrc );
+                    recalculCRC = 0xffff;
+                    recalculCRC = updateCRC16(recalculCRC, 0xAA);
+                    recalculCRC = updateCRC16(recalculCRC,RxMess.Speed);
+                    recalculCRC = updateCRC16(recalculCRC,RxMess.Angle);
+                    CRCRecu = (RxMess.MsbCrc << 8) | RxMess.LsbCrc;
+                    //CRCRecu = << 8 RxMess.MsbCrc;
+                    //CRCRecu = (CRCRecu & 0xff00) | RxMess.LsbCrc;
+                    if(recalculCRC == CRCRecu)
+                    {
+                        pData->SpeedSetting = RxMess.Speed;
+                        pData->AngleSetting = RxMess.Angle;
+                        commStatus = 1;
+                    }
+                }
             }
         }
-        else
-        {
-            // Le message n'étant pas bon, on nettoie juste le byte le plus vieux de la fifo
-            DecalageMessage = 1;
-        }
-        // Decalage du tableau intermediaire contenant le fifo selon les bytes deja lus ou utilises
-        for (j = 0; j <= NbCharToRead; j++)
-        {
-            fifoRX[j] = fifoRX[DecalageMessage + j];
-        }
     }
+
+    // Lecture et décodage fifo réception
+    // ...
+ 
     // Gestion controle de flux de la réception
-    if(GetWriteSpace ( &descrFifoRX) >= (2*MESS_SIZE)) 
-    {
+    if(GetWriteSpace ( &descrFifoRX) >= (2*MESS_SIZE)) {
         // autorise émission par l'autre
         RS232_RTS = 0;
     }

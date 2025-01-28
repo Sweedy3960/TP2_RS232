@@ -59,7 +59,13 @@ SUBSTITUTE GOODS, TECHNOLOGY, SERVICES, OR ANY CLAIMS BY THIRD PARTIES
 #include "system_config.h"
 #include "system_definitions.h"
 #include "Mc32DriverAdc.h"
-
+#define NB_LEDS 8
+#define L1 1
+#define L2 2
+#define L3 3
+#define L4 4
+#define C1 1
+#define _3STIMER 150
 // DOM-IGNORE-BEGIN
 #ifdef __cplusplus  // Provide C++ Compatibility
 
