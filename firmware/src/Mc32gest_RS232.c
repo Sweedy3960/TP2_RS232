@@ -15,6 +15,7 @@
 #include "Mc32gest_RS232.h"
 #include "gestPWM.h"
 #include "Mc32CalCrc16.h"
+#include <stdlib.h>
 #define TAILLE_TABLEAU 3
 
 typedef union {
@@ -76,11 +77,12 @@ void InitFifoComm(void)
 // Valeur de retour 1  = message reçu donc en remote (data mis à jour)
 int GetMessage(S_pwmSettings *pData)
 {   
-    int8_t commStatus = 0;
+    static int8_t commStatus=0;
     static int16_t recalculCRC = 0;
     static int16_t CRCRecu = 0;
     static int8_t nbCharToRead = 0;
-
+    static int8_t cntError = 0; 
+    
     // Struct pour réception des messages
     StruMess RxMess;    
     // Traitement de réception à introduire ICI
@@ -115,12 +117,31 @@ int GetMessage(S_pwmSettings *pData)
                     if(recalculCRC == CRCRecu)
                     {
                         pData->SpeedSetting = RxMess.Speed;
-                        pData->AngleSetting = RxMess.Angle;
+                        pData->AngleSetting = RxMess.Angle ;
+                        pData->absSpeed= abs(RxMess.Speed);
+                        pData->absAngle = abs(RxMess.Angle -90);
                         commStatus = 1;
+                        cntError=0;
                     }
+                    
+                    
                 }
+                
             }
+            
         }
+      
+    }
+    else
+    {
+        cntError++;
+        if (cntError >=10)
+        {
+            commStatus =0;
+            cntError=10;
+            
+        }
+    
     }
 
     // Lecture et décodage fifo réception
@@ -156,11 +177,11 @@ void SendMessage(S_pwmSettings *pData)
         TxMess.LsbCrc = (ValCrc16 & 0x00FF);
         TxMess.MsbCrc = (ValCrc16 & 0xFF00)>>8;
         // Dépose le message dans le fifo
-        PutCharInFifo ( &descrFifoTX, 0xAA);
+        PutCharInFifo ( &descrFifoTX, (int8_t)0xAA);
         PutCharInFifo ( &descrFifoTX, TxMess.Speed);
         PutCharInFifo ( &descrFifoTX, TxMess.Angle);
-        PutCharInFifo ( &descrFifoTX, TxMess.MsbCrc);
-        PutCharInFifo ( &descrFifoTX, TxMess.LsbCrc);
+        PutCharInFifo ( &descrFifoTX, (int8_t)TxMess.MsbCrc);
+        PutCharInFifo ( &descrFifoTX, (int8_t)TxMess.LsbCrc);
     }
     
    
@@ -222,9 +243,7 @@ void SendMessage(S_pwmSettings *pData)
             // ...
             // transfert dans le FIFO software
             // de tous les char reçus
-            while (PLIB_USART_ReceiverDataIsAvailable(USART_ID_1))
-            
-               
+            if (PLIB_USART_ReceiverDataIsAvailable(USART_ID_1))  
             {
                 c = PLIB_USART_ReceiverByteReceive(USART_ID_1);
                 PutCharInFifo ( &descrFifoRX,c);
@@ -239,7 +258,7 @@ void SendMessage(S_pwmSettings *pData)
             // Suppression des erreurs
             // La lecture des erreurs les efface
             // sauf pour overrun
-            if ((UsartStatus & USART_ERROR_RECEIVER_OVERRUN) == USART_ERROR_RECEIVER_OVERRUN) 
+            while ((UsartStatus & USART_ERROR_RECEIVER_OVERRUN) == USART_ERROR_RECEIVER_OVERRUN) 
             {
                 PLIB_USART_ReceiverOverrunErrorClear(USART_ID_1);
             }
@@ -289,7 +308,7 @@ void SendMessage(S_pwmSettings *pData)
         if ( (i_cts == 0) && ( TXsize > 0 ) &&
         TxBuffFull == false ) 
         {
-            do 
+            while ( (i_cts == 0) && ( TXsize > 0 ) && TxBuffFull==false )
             {
                 GetCharFromFifo(&descrFifoTX, &c);
                 PLIB_USART_TransmitterByteSend(USART_ID_1, c);
@@ -299,7 +318,7 @@ void SendMessage(S_pwmSettings *pData)
                 TxBuffFull =PLIB_USART_TransmitterBufferIsFull (USART_ID_1);
 
  
-            }while ( (i_cts == 0) && ( TXsize > 0 ) && TxBuffFull==false );
+            }
  
             LED5_W = !LED5_R; // Toggle Led5
             // Clear the TX interrupt Flag

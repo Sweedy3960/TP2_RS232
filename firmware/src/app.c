@@ -156,8 +156,9 @@ void APP_Tasks(void) {
             static int cnt=0;
             static int cntMessageEronous;
             static int cyclFlag;
-           
+            CommStatus = GetMessage(&PWMData);
             // Réception param. remote  c'est ca qui v pas 
+            /*
             if(CommStatus == 0)
             {
                 cntMessageEronous++;
@@ -171,23 +172,29 @@ void APP_Tasks(void) {
             {
                 cyclFlag =1;
             }
-                   
+                   */
             
-            if (cyclFlag == 0) // local ?
+            if (CommStatus == 0) // local ?
             {
                     GPWM_GetSettings(&PWMData); // local
             }
             else
             {
                     GPWM_GetSettings(&PWMDataToSend); // remote
+                     
             }
-            CommStatus = GetMessage(&PWMData);
-            cnt++;
-            if (cnt >= 5)
+           
+            
+             
+            GPWM_DispSettings(&PWMData, CommStatus);
+            GPWM_ExecPWM(&PWMData);
+            
+            
+            if (cnt == 5)
             {
                 cnt = 0;
                 // Envoi valeurs 
-                if (cyclFlag == 0) // local ?
+                if (CommStatus == 0) // local ?
                 {
                    SendMessage(&PWMData); // local
                   
@@ -201,10 +208,11 @@ void APP_Tasks(void) {
                 appData.state = APP_STATE_WAIT; 
                 
                 
-            }  
-            GPWM_ExecPWM(&PWMData);
-            GPWM_DispSettings(&PWMData, cyclFlag);
-            
+            }
+            else
+            {
+                cnt++;
+            }
             
             appData.state = APP_STATE_WAIT;
             break;

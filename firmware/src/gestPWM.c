@@ -11,7 +11,7 @@
 //
 /*--------------------------------------------------------*/
 
-
+#include <stdlib.h>         // abs
 #include "app.h"
 #include "GestPWM.h"
 #include "Mc32DriverLcd.h"
@@ -121,6 +121,7 @@ pData->absSpeed = abs(pData->SpeedSetting);
 pData->absAngle = ((ADC1_Angle_M * moyenne2) / ADC_RES);  
 
 // Calcul de l'angle
+//ICI la soustraction de 90 permet de passer la valeur de l'ange de 0 à 180 
 pData->AngleSetting = (((ADC1_Angle_M * moyenne2) / ADC_RES) - ADC1_Angle_90);  
 }
 
@@ -184,42 +185,34 @@ void GPWM_DispSettings(S_pwmSettings *pData, int remote)
 // *****************************************************************************
 void GPWM_ExecPWM(S_pwmSettings *pData)
 {
-    
-    static int PulseWidthVitesse;
-    //static int PulseWidthAngle;
-    
-    // Gestion sens Moteur et PWM
-    
+  //selon signe de le réglage de vitesse 
     if(pData->SpeedSetting > 0)
     {
-        //paramètrage de la sens horraire
+        //paramètrage de la direction 
         AIN1_HBRIDGE_W = 1;
         AIN2_HBRIDGE_W = 0;
         STBY_HBRIDGE_W = 1;
     }
-    
     else if (pData->SpeedSetting < 0)
     {
-        //paramètrage de la sens  anti-horraire
+        //paramètrage de la direction 
         AIN1_HBRIDGE_W = 0;
         AIN2_HBRIDGE_W = 1;
         STBY_HBRIDGE_W = 1;
     }
-    // met le moteur en standby
-    else if(pData->SpeedSetting == 0)
+    else 
     {
+        //met en Standby 
         STBY_HBRIDGE_W = 0; 
     }
-        
-    
-    // Calcul de la largeur d'impulsion pour la sortie OC3 en fonction de l'angle
-   
-    PLIB_OC_PulseWidth16BitSet(OC_ID_3, ((pData->absAngle * PLAGE_OC3 ) / PLAGE_ANGLE_MAX ) + OFFSET_OC3);  //Permet de generer le PWM en choisissant l'OC et la largeur d'impulsion
-    
-    // Calcul de la largeur d'impulsion pour la sortie OC2 en fonction de l'angle
-    PulseWidthVitesse = ((pData->absSpeed * DRV_TMR1_PeriodValueGet())/99);
-    PLIB_OC_PulseWidth16BitSet(OC_ID_2,PulseWidthVitesse);        ///Permet de generer le PWM en choisissant l'OC et la largeur d'impulsion
+    //Calcul pour faire correspondre valeure de vitesse en % en Tick pour compteur(timer2) pour moteur DC
+    //ATTENTIO : le calcul pour la valeur de l'OC se fait avec un angle absolu (de 0 à 180) dans le calcul l'ajout de +90)
+    // doit être compenser par une soustraction à la reception...  La valeur absolue de l'angle est donnée entre 0 et 180 et PAS -90 et +90
+    PLIB_OC_PulseWidth16BitSet(OC_ID_2, (pData->absSpeed*VAL_MAX_TIMER2)/DIVISION);
+    //Calcul pour faire correspondre valeure de l'angle  en ° en Tick pour compteur(timer3) pour servo
+    PLIB_OC_PulseWidth16BitSet(OC_ID_3, (((  pData->absAngle   )*(MAXTICK_TIMER3/ANGLE_ABS)))+VAL06MS);
 }
+                      
 
 // Execution PWM software
 void GPWM_ExecPWMSoft(S_pwmSettings *pData)
